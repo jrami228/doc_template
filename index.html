@@ -1,3 +1,4 @@
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -48,19 +49,6 @@ body {
 }
 .page-letterhead img { height:52px; width:auto; background:#fff; display:block; }
 .editor-wrap { position:relative; }
-#pageGuides { position:absolute; inset:0; pointer-events:none; z-index:3; overflow:hidden; }
-.page-break-line {
-  position:absolute; left:12px; right:12px; height:0;
-  border-top:2px dashed #1d6fb8;
-}
-.page-break-line .label {
-  position:absolute; right:0; top:-11px;
-  background:#1d6fb8; color:#fff; font-size:10px; font-weight:800;
-  letter-spacing:.04em; padding:1px 7px; border-radius:999px;
-}
-.page-break-line .label-left {
-  right:auto; left:0; background:#0f2740;
-}
 #editor { position:relative; z-index:2; min-height:62vh; padding:28px 32px 80px; outline:none; font-size:16px; line-height:1.6; }
 #editor:empty:before { content:attr(data-placeholder); color:#9aa6b2; }
 #editor a { color:#0b57d0; }
@@ -166,17 +154,29 @@ kbd { background:#eee; border-radius:4px; padding:1px 5px; font-size:11px; }
   #editor { padding:16px; }
 }
 .saved-ok { color:#1b7f4a; font-weight:700; }
+
+.app { max-width:1600px; }
+.document-workspace { display:grid; grid-template-columns:minmax(320px, 0.8fr) minmax(420px, 1.2fr); gap:16px; align-items:start; margin-top:12px; }
+.document-workspace.pages-only { grid-template-columns:1fr; }
+.pages-only .editor-shell { display:none; }
+.editor-shell { margin-top:0; max-height:80vh; overflow:auto; }
+.editor-shell > .page-letterhead, .editor-shell > .page-footer { display:none; }
+#livePages { background:#d8dce1; padding:20px 0; min-width:0; overflow:auto; max-height:80vh; }
+#livePages .pdf-page { margin:0 auto 24px; box-shadow:0 2px 9px #0004; flex-shrink:0; }
+#livePages .pdf-page:last-child { margin-bottom:0; }
+.pdf-body { min-height:0; }
+#pageViewStatus { font-size:12px; color:#556; }
+@media(max-width:800px) { .document-workspace { grid-template-columns:1fr; } .editor-shell { max-height:40vh; } }
+
+
+#tableResizeHandle { position:fixed; width:16px; height:16px; padding:0; background:#fff; border:2px solid #1769aa; border-radius:3px; cursor:nwse-resize; touch-action:none; z-index:25; box-shadow:0 1px 4px #0003; }
+#tableResizeHandle[hidden] { display:none; }
+#editor table { max-width:100%; }
 </style>
 </head>
 <body>
 <div class="app no-print">
   <header class="topbar">
-    <div class="brand">
-      <div>
-        <p class="eyebrow">Miami-Dade County</p>
-        <h1>Document Editor</h1>
-      </div>
-    </div>
     <div class="top-actions">
       <button class="btn" type="button" id="newDocBtn">New</button>
       <button class="btn" type="button" id="previewBtn">Preview</button>
@@ -217,18 +217,13 @@ kbd { background:#eee; border-radius:4px; padding:1px 5px; font-size:11px; }
     <button type="button" data-cmd="justifyCenter" aria-label="Align center">Center</button>
     <button type="button" data-cmd="justifyRight" aria-label="Align right">Right</button>
     <span class="sep"></span>
-    <button type="button" id="linkBtn" aria-label="Insert link">Link</button>
     <button type="button" id="tableBtn" aria-label="Insert table">Table</button>
     <button type="button" id="insertImageBtn" aria-label="Insert image">Add photos</button>
     <button type="button" id="dateBtn" aria-label="Insert today's date">Date</button>
-    <button type="button" id="photoMemoBtn" aria-label="Insert photo memo header">Photo memo</button>
     <input id="fileImage" type="file" accept="image/*" multiple hidden capture="environment" />
     <button type="button" id="pastePlainBtn" aria-label="Paste as plain text">Paste plain</button>
     <button type="button" data-cmd="undo" aria-label="Undo">Undo</button>
     <button type="button" data-cmd="redo" aria-label="Redo">Redo</button>
-    <button type="button" id="findBtn" aria-label="Find and replace">Find</button>
-    <button type="button" id="settingsBtn" aria-label="Page and header settings">Page setup</button>
-    <button type="button" id="helpBtn" aria-label="Keyboard shortcuts">Help</button>
   </div>
 
   <div class="findbar" id="findbar">
@@ -273,21 +268,25 @@ kbd { background:#eee; border-radius:4px; padding:1px 5px; font-size:11px; }
     </label>
   </div>
 
+  <div class="toolbar"><button type="button" id="toggleEditing">Hide editing panel</button><strong>Live export pages</strong><span id="pageViewStatus" role="status">Preparing pages…</span></div>
+  <div class="document-workspace">
   <div class="editor-shell">
     <div class="page-letterhead" contenteditable="false" aria-hidden="false">
       <img id="pageLogo" alt="Miami-Dade County" />
     </div>
     <div class="editor-wrap">
-      <div id="pageGuides" aria-hidden="true"></div>
+      
       <div id="editor" contenteditable="true" spellcheck="true" lang="en-US" data-placeholder="Start typing, or paste text and images from the clipboard…"></div>
     </div>
     <div class="page-footer" contenteditable="false">Overtown Transit Village North | 701 NW 1st Court, 4th floor, Miami, FL 33136 | 305-372-6789 | DERM@miamidade.gov</div>
+  </div>
+  <div id="livePages" aria-label="Document pages as exported"></div>
   </div>
   <div class="statusbar">
     <span id="saveStatus">Ready</span>
     <span id="countStatus">0 words · 0 characters</span>
   </div>
-  <p class="hint">Blue dashed lines are page breaks. Use Photo memo, then Add photos or paste from the clipboard. The county logo is on page one only. Caption type is on the right of each photo. Page numbers print only at the bottom.</p>
+  <p class="hint">The white pages show the PDF layout, including page margins and image placement. Edit in the left panel; pages update automatically. Hide the editing panel for a larger page view. New documents start with a blank two-column table. Click a table in the editing panel, then drag its lower-right handle to resize it. Use Add photos or paste from the clipboard. The county logo is on page one only. Caption type is on the right of each photo. Page numbers print only at the bottom.</p>
 </div>
 
 <div id="docsModal" class="modal no-print" role="dialog" aria-label="Documents">
@@ -412,67 +411,49 @@ function updateCount() {
   window.__guideTimer = setTimeout(renderPageGuides, 120);
 }
 
-function contentUsableHeight() {
-  const d = pageDims();
-  const header = 78;
-  const footer = 34;
-  return Math.max(240, d.h - d.margin * 2 - header - footer);
+let pageViewRevision = 0;
+async function renderPageGuides() {
+  const revision = ++pageViewRevision;
+  const status = document.getElementById("pageViewStatus");
+  status.textContent = "Updating pages…";
+  // Each render owns its measurement root so export and typing cannot interfere.
+  const stage = document.createElement("div");
+  stage.style.cssText = "position:fixed;left:-20000px;top:0;pointer-events:none;";
+  document.body.appendChild(stage);
+  try {
+    await document.fonts.ready;
+    const pages = await paginate(stage);
+    if (revision !== pageViewRevision) return;
+    const mount = document.getElementById("livePages");
+    mount.replaceChildren(...pages);
+    fitLivePages();
+    status.textContent = pages.length + (pages.length === 1 ? " page" : " pages");
+    const count = document.getElementById("countStatus");
+    count.textContent = count.textContent.replace(/ · \d+ pages?$/, "") + " · " + status.textContent;
+  } catch (error) {
+    status.textContent = "Page view could not update: " + error.message;
+  } finally { stage.remove(); }
 }
-
-function blockGuideHeight(el) {
-  if (el.classList && el.classList.contains("mdc-figure")) {
-    const img = el.querySelector("img");
-    return ((img && img.offsetHeight) || el.offsetHeight) + 16;
-  }
-  return el.offsetHeight;
+function fitLivePages() {
+  const mount = document.getElementById("livePages");
+  const zoom = Math.min(1, Math.max(0.2, (mount.clientWidth - 40) / pageDims().w));
+  mount.querySelectorAll(".pdf-page").forEach(page => page.style.zoom = zoom);
 }
-function renderPageGuides() {
-  const layer = document.getElementById("pageGuides");
-  if (!layer || !EDITOR) return;
-  layer.innerHTML = "";
-  const usable = contentUsableHeight();
-  const pad = parseFloat(getComputedStyle(EDITOR).paddingTop) || 28;
-  const kids = [...EDITOR.children].filter(el => el.offsetHeight > 0);
-  let used = 0;
-  let page = 1;
-  const breaks = [];
-  kids.forEach(el => {
-    const h = blockGuideHeight(el);
-    if (used > 0 && used + h > usable) {
-      breaks.push({ top: el.offsetTop, from: page, to: page + 1 });
-      page += 1;
-      used = h;
-      while (used > usable) {
-        breaks.push({ top: el.offsetTop + (used - h) + usable, from: page, to: page + 1 });
-        page += 1;
-        used -= usable;
-      }
-    } else {
-      used += h;
-      while (used > usable && kids.length) {
-        breaks.push({ top: el.offsetTop + (el.offsetHeight - (used - usable)), from: page, to: page + 1 });
-        page += 1;
-        used -= usable;
-      }
-    }
-  });
-  if (!kids.length) {
-    breaks.push({ top: pad + usable, from: 1, to: 2 });
-    page = 1;
-  }
-  breaks.forEach(b => {
-    const line = document.createElement("div");
-    line.className = "page-break-line";
-    line.style.top = Math.max(0, b.top) + "px";
-    line.innerHTML = `<span class="label-left label">Page ${b.from}</span><span class="label">Page break · ${b.to}</span>`;
-    layer.appendChild(line);
-  });
-  const status = document.getElementById("countStatus");
-  if (status) {
-    const base = status.textContent.replace(/ · \d+ pages?$/, "");
-    status.textContent = base + " · " + page + (page === 1 ? " page" : " pages");
-  }
-}
+document.getElementById("toggleEditing").onclick = function () {
+  const hidden = document.querySelector(".document-workspace").classList.toggle("pages-only");
+  this.textContent = hidden ? "Show editing panel" : "Hide editing panel";
+  fitLivePages();
+};
+window.addEventListener("resize", fitLivePages);
+new MutationObserver(() => {
+  clearTimeout(window.__guideTimer);
+  window.__guideTimer = setTimeout(renderPageGuides, 200);
+}).observe(EDITOR, {subtree:true, childList:true, characterData:true, attributes:true});
+EDITOR.addEventListener("load", () => renderPageGuides(), true);
+document.querySelector(".settings").addEventListener("input", () => {
+  clearTimeout(window.__guideTimer);
+  window.__guideTimer = setTimeout(renderPageGuides, 200);
+});
 
 async function persistNow() {
   if (!currentId) return;
@@ -527,7 +508,9 @@ function escapeHtml(s) {
   return String(s).replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;"}[c]));
 }
 
-async function newDocument(name="Untitled", html="", s=null) {
+const EMPTY_TABLE = '<table style="table-layout:fixed"><tbody><tr><td style="width:50%"><br></td><td style="width:50%"><br></td></tr></tbody></table><p><br></p>';
+
+async function newDocument(name="Untitled", html=EMPTY_TABLE, s=null) {
   const id = uid();
   const doc = { id, name, html, settings: s || settings(), updated: Date.now() };
   await idbPut("docs", doc);
@@ -572,17 +555,12 @@ document.getElementById("dateBtn").onclick = () => {
   document.execCommand("insertText", false, new Date().toLocaleDateString());
   EDITOR.focus();
 };
-document.getElementById("photoMemoBtn").onclick = () => insertTemplate("photo");
 document.getElementById("fileImage").onchange = async (e) => {
   for (const f of [...e.target.files]) await insertImageFile(f);
   e.target.value = "";
 };
-document.getElementById("linkBtn").onclick = insertLink;
 document.getElementById("tableBtn").onclick = insertTable;
-document.getElementById("findBtn").onclick = () => document.getElementById("findbar").classList.add("open");
 document.getElementById("closeFindBtn").onclick = () => document.getElementById("findbar").classList.remove("open");
-document.getElementById("settingsBtn").onclick = () => document.getElementById("settings").classList.toggle("open");
-document.getElementById("helpBtn").onclick = () => document.getElementById("helpModal").classList.add("open");
 document.getElementById("closeHelpBtn").onclick = () => document.getElementById("helpModal").classList.remove("open");
 const docsBtn = document.getElementById("docsBtn"); if (docsBtn) docsBtn.onclick = () => { renderDocsModal(); document.getElementById("docsModal").classList.add("open"); };
 document.getElementById("closeDocsBtn").onclick = () => document.getElementById("docsModal").classList.remove("open");
@@ -625,8 +603,81 @@ function insertLink() {
   document.execCommand("createLink", false, url);
 }
 function insertTable() {
-  document.execCommand("insertHTML", false, "<table><tr><th>Column</th><th>Column</th></tr><tr><td></td><td></td></tr></table><p><br></p>");
+  document.execCommand("insertHTML", false, EMPTY_TABLE);
 }
+// The table handle lives outside document content and cannot be saved or exported.
+const tableResizeHandle = document.createElement("button");
+tableResizeHandle.id = "tableResizeHandle";
+tableResizeHandle.type = "button";
+tableResizeHandle.className = "no-print";
+tableResizeHandle.title = "Drag to resize table";
+tableResizeHandle.setAttribute("aria-label", "Resize table: drag, or use arrow keys");
+tableResizeHandle.hidden = true;
+document.body.appendChild(tableResizeHandle);
+let selectedTable = null;
+let tableDrag = null;
+function positionTableHandle() {
+  if (!selectedTable || !EDITOR.contains(selectedTable) || !selectedTable.getClientRects().length) {
+    tableResizeHandle.hidden = true; return;
+  }
+  const rect = selectedTable.getBoundingClientRect();
+  const panel = document.querySelector(".editor-shell").getBoundingClientRect();
+  tableResizeHandle.hidden = rect.bottom < panel.top || rect.bottom > panel.bottom || rect.right > panel.right;
+  tableResizeHandle.style.left = (rect.right - 9) + "px";
+  tableResizeHandle.style.top = (rect.bottom - 9) + "px";
+}
+EDITOR.addEventListener("pointerdown", event => {
+  selectedTable = event.target.closest("table");
+  positionTableHandle();
+});
+function resizeSelectedTable(width, height) {
+  if (!selectedTable) return;
+  const parent = selectedTable.parentElement;
+  const style = getComputedStyle(parent);
+  const available = parent.clientWidth - parseFloat(style.paddingLeft) - parseFloat(style.paddingRight);
+  const minWidth = Math.min(available, Math.max(100, (selectedTable.rows[0]?.cells.length || 1) * 50));
+  selectedTable.style.width = (Math.min(available, Math.max(minWidth, width)) / available * 100) + "%";
+  selectedTable.style.height = Math.max(36, height) + "px";
+  selectedTable.style.tableLayout = "fixed";
+  positionTableHandle();
+}
+tableResizeHandle.addEventListener("pointerdown", event => {
+  if (!selectedTable) return;
+  event.preventDefault();
+  const rect = selectedTable.getBoundingClientRect();
+  tableDrag = {x:event.clientX, y:event.clientY, width:rect.width, height:rect.height};
+  tableResizeHandle.setPointerCapture(event.pointerId);
+});
+tableResizeHandle.addEventListener("pointermove", event => {
+  if (!tableDrag) return;
+  resizeSelectedTable(tableDrag.width + event.clientX - tableDrag.x, tableDrag.height + event.clientY - tableDrag.y);
+});
+function finishTableResize() {
+  if (!tableDrag) return;
+  tableDrag = null;
+  scheduleSave(); updateCount(); positionTableHandle();
+}
+tableResizeHandle.addEventListener("pointerup", finishTableResize);
+tableResizeHandle.addEventListener("pointercancel", finishTableResize);
+tableResizeHandle.addEventListener("lostpointercapture", finishTableResize);
+tableResizeHandle.addEventListener("keydown", event => {
+  if (!selectedTable || !["ArrowLeft","ArrowRight","ArrowUp","ArrowDown"].includes(event.key)) return;
+  event.preventDefault();
+  const rect = selectedTable.getBoundingClientRect();
+  const step = event.shiftKey ? 20 : 5;
+  resizeSelectedTable(rect.width + (event.key === "ArrowRight" ? step : event.key === "ArrowLeft" ? -step : 0), rect.height + (event.key === "ArrowDown" ? step : event.key === "ArrowUp" ? -step : 0));
+  scheduleSave(); updateCount();
+});
+document.addEventListener("pointerdown", event => {
+  if (!EDITOR.contains(event.target) && event.target !== tableResizeHandle) {
+    selectedTable = null; positionTableHandle();
+  }
+});
+window.addEventListener("scroll", positionTableHandle, true);
+window.addEventListener("resize", positionTableHandle);
+new ResizeObserver(positionTableHandle).observe(EDITOR);
+new MutationObserver(positionTableHandle).observe(EDITOR, {childList:true, subtree:true});
+
 function pastePlain() {
   navigator.clipboard.readText().then(t => document.execCommand("insertText", false, t)).catch(() => alert("Clipboard text was not available."));
 }
@@ -910,31 +961,23 @@ async function exportHtmlSession() {
       const rec = await idbGet("images", img.dataset.imgId);
       if (rec && rec.data) images[img.dataset.imgId] = rec.data;
     }
-    const clone = EDITOR.cloneNode(true);
-    clone.querySelectorAll(".mdc-cap-type").forEach(n => n.remove());
-    clone.querySelectorAll("img[data-img-id]").forEach(img => {
-      if (images[img.dataset.imgId]) img.src = images[img.dataset.imgId];
-    });
+    const stage = document.createElement("div");
+    stage.style.cssText = "position:fixed;left:-20000px;top:0";
+    document.body.appendChild(stage);
+    let pageHTML;
+    try {
+      const pages = await paginate(stage);
+      pages.forEach(page => page.querySelectorAll("img[data-img-id]").forEach(img => {
+        if (images[img.dataset.imgId]) img.src = images[img.dataset.imgId];
+      }));
+      pageHTML = pages.map(page => page.outerHTML).join("\n");
+    } finally { stage.remove(); }
     const title = settings().title || "DERM-session";
-    const foot = settings().footer || "";
-    const html = `<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><title>${escapeHtml(title)}</title>
-<style>
-body{margin:0;background:#efe9dc;font-family:Calibri,"Segoe UI",Arial,sans-serif;color:#111;}
-.sheet{width:8.5in;min-height:11in;margin:16px auto;background:#fff;padding:1in;box-sizing:border-box;position:relative;}
-.letterhead img{height:52px;background:#fff;}
-.mdc-figure{margin:16px 0;}
-.mdc-figure[data-align=center]{display:flex;justify-content:center;}
-.mdc-figure img{max-width:100%;height:auto;outline:3px solid #c62828;}
-.mdc-caption{position:absolute;left:50%;top:8px;transform:translateX(-50%);background:#ffe082;border:1px solid #f9a825;padding:3px 8px;font-weight:700;font-size:12px;}
-.mdc-img-wrap{position:relative;display:inline-block;}
-.foot{margin-top:24px;border-top:1px solid #111;padding-top:8px;font-size:11px;}
-</style></head><body>
-<div class="sheet">
-  <div class="letterhead"><img src="${LOGO}" alt="Miami-Dade County"></div>
-  ${clone.innerHTML}
-  <div class="foot">${escapeHtml(foot)}</div>
-</div>
-</body></html>`;
+    const styles = document.querySelector("style").textContent;
+    const html = `<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><title>${escapeHtml(title)}</title><style>${styles}
+body{margin:0;background:#d8dce1;} .pdf-page{margin:24px auto;box-shadow:0 2px 9px #0004;}
+@media print{body *{visibility:visible !important}.pdf-page{margin:0;box-shadow:none}.pdf-page:last-child{break-after:auto} @page{size:${settings().page};margin:0}}
+</style></head><body>${pageHTML}</body></html>`;
     downloadBlob(html, title.replace(/[^\w\-]+/g,"_") + ".html", "text/html");
     setStatus("HTML session saved", true);
   } catch (err) {
@@ -1043,7 +1086,15 @@ function cloneForPdf(node) {
   if (node.tagName==="IMG") {
     const wrap=document.createElement("div"); wrap.className="pdf-figure"; wrap.appendChild(node.cloneNode(true)); return wrap;
   }
-  return node.cloneNode(true);
+  // Convert nested figures too (especially photos placed in table cells).
+  // Clone recursively from the live nodes so selected caption values are retained.
+  if (node.matches(".mdc-cap-type, .mdc-resize-handle")) return null;
+  const copy = node.cloneNode(false);
+  for (const child of node.childNodes) {
+    const converted = child.nodeType === 1 ? cloneForPdf(child) : child.cloneNode(true);
+    if (converted) copy.appendChild(converted);
+  }
+  return copy;
 }
 
 function flatten(root) {
@@ -1061,53 +1112,143 @@ function flatten(root) {
   return out;
 }
 
-async function paginate() {
-  const root=document.getElementById("pdf-root");
+function bodyFits(body, limit) { return body.scrollHeight <= limit() + 2; }
+
+async function fitImgsToHeight(container, maxH) {
+  container.querySelectorAll("img").forEach(img => {
+    if (img.offsetHeight > maxH && img.offsetHeight > 0) {
+      img.style.width = Math.max(48, Math.floor(img.offsetWidth * maxH / img.offsetHeight)) + "px";
+      img.style.height = "auto";
+    }
+  });
+}
+
+// Splits the inline content of a paragraph/heading/etc across as many new
+// pages as needed, word by word, so a block taller than one page no longer
+// gets silently clipped (and export no longer stalls after a page or two).
+async function splitTextBlockAcrossPages(ctx, block) {
+  const limit = ctx.getLimit;
+  let body = ctx.getBody();
+  const kids = [...block.childNodes];
+  let chunk = block.cloneNode(false);
+  body.appendChild(chunk);
+
+  for (const node of kids) {
+    chunk.appendChild(node);
+    if (node.nodeType === 1) await waitImages(chunk);
+    if (bodyFits(body, limit)) continue;
+    chunk.removeChild(node);
+
+    if (node.nodeType === 3 && node.textContent.trim()) {
+      const words = node.textContent.match(/\s+|\S+/g) || [];
+      let buf = "";
+      for (const w of words) {
+        const candidate = buf + w;
+        const testNode = document.createTextNode(candidate);
+        chunk.appendChild(testNode);
+        const fits = bodyFits(body, limit);
+        chunk.removeChild(testNode);
+        if (fits || !buf.trim()) { buf = candidate; continue; }
+        chunk.appendChild(document.createTextNode(buf));
+        body = ctx.newPage();
+        chunk = block.cloneNode(false);
+        body.appendChild(chunk);
+        buf = w.replace(/^\s+/, "");
+      }
+      if (buf) chunk.appendChild(document.createTextNode(buf));
+      continue;
+    }
+
+    // Non-text inline node (e.g. <b>, <img>, <br>) that doesn't fit as-is.
+    if (chunk.childNodes.length > 0) {
+      body = ctx.newPage();
+      chunk = block.cloneNode(false);
+      body.appendChild(chunk);
+    }
+    chunk.appendChild(node);
+    if (node.nodeType === 1) {
+      await waitImages(chunk);
+      if (!bodyFits(body, limit)) await fitImgsToHeight(chunk, Math.max(60, limit() - 24));
+    }
+  }
+}
+
+async function appendBlockPaginated(ctx, block) {
+  const limit = ctx.getLimit;
+
+  if (block.tagName === "TABLE" && block.rows.length > 1) {
+    let body = ctx.getBody();
+    const rows = [...block.rows];
+    const headerClone = rows[0].cloneNode(true);
+    let table = block.cloneNode(false); table.appendChild(headerClone.cloneNode(true));
+    body.appendChild(table);
+    await waitImages(table);
+    if (!bodyFits(body, limit) && body.childNodes.length > 1) {
+      body.removeChild(table);
+      body = ctx.newPage();
+      table = block.cloneNode(false); table.appendChild(headerClone.cloneNode(true));
+      body.appendChild(table);
+    }
+    for (let i = 1; i < rows.length; i++) {
+      const row = rows[i].cloneNode(true);
+      table.appendChild(row);
+      await waitImages(row);
+      if (bodyFits(body, limit)) continue;
+      table.removeChild(row);
+      body = ctx.newPage();
+      table = block.cloneNode(false); table.appendChild(headerClone.cloneNode(true)); table.appendChild(row);
+      body.appendChild(table);
+    }
+    return;
+  }
+
+  let body = ctx.getBody();
+  body.appendChild(block);
+  await waitImages(block);
+  if (bodyFits(body, limit)) return;
+
+  const hadOtherContent = body.childNodes.length > 1;
+  body.removeChild(block);
+
+  if (hadOtherContent) {
+    body = ctx.newPage();
+    body.appendChild(block);
+    await waitImages(block);
+    if (bodyFits(body, limit)) return;
+  } else {
+    body.appendChild(block);
+  }
+
+  // The block is alone on its (empty) page and still overflows.
+  const isFigure = block.classList && block.classList.contains("pdf-figure");
+  if (isFigure) {
+    await fitImgsToHeight(block, Math.max(80, limit() - 24));
+    return;
+  }
+
+  body.removeChild(block);
+  await splitTextBlockAcrossPages(ctx, block);
+}
+
+async function paginate(root = document.getElementById("pdf-root")) {
+  await document.fonts.ready;
   root.innerHTML="";
   const blocks=flatten(EDITOR);
   if (!blocks.length) { const p=document.createElement("p"); p.innerHTML="&nbsp;"; blocks.push(p); }
   let page=makePdfPage(1); root.appendChild(page); await waitImages(page);
   let body=page.querySelector(".pdf-body");
-  const limit=()=>body.clientHeight;
+  const ctx = {
+    getBody: () => body,
+    getLimit: () => body.clientHeight,
+    newPage: () => {
+      page = makePdfPage(root.children.length + 1);
+      root.appendChild(page);
+      body = page.querySelector(".pdf-body");
+      return body;
+    }
+  };
   for (const block of blocks) {
-    if (block.tagName==="TABLE" && block.rows.length>2) {
-      const rows=[...block.rows];
-      const header=rows[0].cloneNode(true);
-      let table=block.cloneNode(false); table.appendChild(header.cloneNode(true));
-      body.appendChild(table);
-      for (let i=1;i<rows.length;i++) {
-        const row=rows[i].cloneNode(true);
-        table.appendChild(row);
-        if (body.scrollHeight<=limit()+2) continue;
-        table.removeChild(row);
-        page=makePdfPage(root.children.length+1); root.appendChild(page); body=page.querySelector(".pdf-body");
-        table=block.cloneNode(false); table.appendChild(header.cloneNode(true)); table.appendChild(row);
-        body.appendChild(table);
-      }
-      continue;
-    }
-    const fitImgs = (node, maxH) => {
-      node.querySelectorAll("img").forEach(img => {
-        if (img.offsetHeight>maxH && img.offsetHeight>0) {
-          img.style.width=Math.max(64, Math.floor(img.offsetWidth*maxH/img.offsetHeight))+"px";
-          img.style.height="auto";
-        }
-      });
-    };
-    body.appendChild(block);
-    await waitImages(block);
-    const pageH = limit();
-    if (body.scrollHeight>pageH+2) {
-      const remain = pageH - (body.scrollHeight - block.offsetHeight);
-      const almostFits = remain > pageH * 0.55 && block.querySelector("img");
-      if (almostFits) fitImgs(block, Math.max(64, remain-8));
-    }
-    if (body.scrollHeight<=pageH+2) continue;
-    body.removeChild(block);
-    page=makePdfPage(root.children.length+1); root.appendChild(page); body=page.querySelector(".pdf-body");
-    body.appendChild(block);
-    await waitImages(block);
-    if (body.scrollHeight>limit()+2) fitImgs(block, Math.max(64, limit()-24));
+    await appendBlockPaginated(ctx, block);
   }
   const pages=[...root.querySelectorAll(".pdf-page")];
   pages.forEach((pg,i) => {
@@ -1178,7 +1319,7 @@ async function printPages() {
     }
   } catch (e) {
     console.error(e);
-    EDITOR.innerHTML = "";
+    EDITOR.innerHTML = EMPTY_TABLE;
   }
   updateCount();
 })();
